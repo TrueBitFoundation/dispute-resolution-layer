@@ -2,7 +2,7 @@
   "name": "dispute-resolution-layer",
   "version": "1.0.0",
   "description": "Truebit Dispute Resolution Layer interface",
-  "main": "truffle-config.js",
+  "main": "",
   "directories": {
     "test": "test"
   },
