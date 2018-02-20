@@ -1,0 +1,17 @@
+{
+  "name": "dispute-resolution-layer",
+  "version": "1.0.0",
+  "description": "Truebit Dispute Resolution Layer interface",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle test"
+  },
+  "keywords": [
+    "truebit"
+  ],
+  "author": "hswick",
+  "license": "ISC"
+}
