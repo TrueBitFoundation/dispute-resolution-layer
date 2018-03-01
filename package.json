@@ -13,5 +13,8 @@
     "truebit"
   ],
   "author": "hswick",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "web3": "^1.0.0-beta.30"
+  }
 }
