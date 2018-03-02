@@ -27,10 +27,14 @@ contract SimpleAdderGame is IDisputeResolutionLayer {
 
   }
 
-  function decodeState(bytes state) internal pure returns(uint[] decodedState) {
-    // for(uint i = 0; i < state.length; i++) {
-    //   decodedState.push(uint(state[i]));
-    // }
+  function runToStep(bytes program, uint numSteps) constant returns (uint state, bytes32 stateHash) {
+    uint i = 0;
+    while(i < program.length || i < numSteps) {
+      uint n = uint(program[i]);
+      state = state + n;
+      i = i + 1;
+    }
+    stateHash = keccak256(state);
   }
 
   function performFinalVerification(uint sessionId, uint claimId, bytes preValue, bytes postValue, bytes proof) public {

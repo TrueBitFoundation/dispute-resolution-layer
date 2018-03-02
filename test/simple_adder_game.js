@@ -3,6 +3,13 @@ const SimpleAdderGame = artifacts.require("./SimpleAdderGame.sol")
 const web3 = require('web3')
 const adder = require('./helpers/offchainAdder')
 
+const toResult = (data) => {
+  return {
+    state: data[0].toNumber(),
+    stateHash: data[1]
+  }
+}
+
 contract('SimpleAdderGame', function(accounts) {
   let taskManager, simpleAdderGame, taskId, gameId, program, decodedProgram
 
@@ -11,7 +18,7 @@ contract('SimpleAdderGame', function(accounts) {
     simpleAdderGame = await SimpleAdderGame.deployed()
 
     await taskManager.setDisputeResolver(simpleAdderGame.address, {from: accounts[0]})
-    program = "123456789"
+    program = "0x123456789"
   })
 
   it("should decode program properly", () => {
@@ -57,12 +64,12 @@ contract('SimpleAdderGame', function(accounts) {
   })
 
   it("should respond to query", async () => {
-    let state = adder.runToStep(decodedProgram, 3)
-    let stateHash = web3.utils.soliditySha3(adder.encodeState(state))
-    let tx = await simpleAdderGame.respond(gameId, stateHash, {from: accounts[2]})
+    let result = toResult(await simpleAdderGame.runToStep.call(program, 3))
+
+    let tx = await simpleAdderGame.respond(gameId, result.stateHash, {from: accounts[2]})
 
     let response = tx.logs[0].args
-    assert.equal(response.hash, stateHash)
+    assert.equal(response.hash, result.stateHash)
     assert.equal(response.gameId.toNumber(), gameId)
   })
 })
