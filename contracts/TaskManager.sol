@@ -18,6 +18,7 @@ contract TaskManager {
     address verifier;
     bytes taskInput;
     uint solution;
+    bytes32 solutionHash;
     uint gameId;
   }
 
@@ -40,11 +41,12 @@ contract TaskManager {
     return tasks[taskId].taskInput;
   }
 
-  function postSolution(uint taskId, uint solution) {
+  function postSolution(uint taskId, uint solution, bytes32 solutionHash) {
     Task storage t = tasks[taskId];
     require(t.solver == 0x0);
     t.solver = msg.sender;
     t.solution = solution;
+    t.solutionHash = solutionHash;
     SolutionPosted(taskId, solution, msg.sender);
   }
 

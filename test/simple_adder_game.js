@@ -1,7 +1,6 @@
 const TaskManager = artifacts.require("./TaskManager.sol")
 const SimpleAdderGame = artifacts.require("./SimpleAdderGame.sol")
 const web3 = require('web3')
-const adder = require('./helpers/offchainAdder')
 
 const toResult = (data) => {
   return {
@@ -18,12 +17,8 @@ contract('SimpleAdderGame', function(accounts) {
     simpleAdderGame = await SimpleAdderGame.deployed()
 
     await taskManager.setDisputeResolver(simpleAdderGame.address, {from: accounts[0]})
-    program = "0x123456789"
-  })
-
-  it("should decode program properly", () => {
-    decodedProgram = adder.decodeProgram(program)
-    assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9], decodedProgram)
+    program = "0x010203040506070809"
+    programLength = (program.length / 2) - 2;
   })
 
   it("should create a new task", async () => {
@@ -36,12 +31,13 @@ contract('SimpleAdderGame', function(accounts) {
   })
 
   it("should post solution", async () => {
-    let solution = 10
-    let tx = await taskManager.postSolution(taskId, solution, {from: accounts[1]})
+    //Figure out why it can only run up to 4
+    let result = toResult(await simpleAdderGame.runToStep.call(program, programLength))
+    let tx = await taskManager.postSolution(taskId, result.state, result.stateHash, {from: accounts[1]})
     let postedSolution = tx.logs[0].args
 
     assert.equal(taskId, postedSolution.taskId.toNumber())
-    assert.equal(solution, postedSolution.solution.toNumber())
+    assert.equal(result.state, postedSolution.solution.toNumber())
     assert.equal(accounts[1], postedSolution.solver)
   })
 

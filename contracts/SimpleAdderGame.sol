@@ -27,6 +27,10 @@ contract SimpleAdderGame is IDisputeResolutionLayer {
 
   }
 
+  function performFinalVerification(uint sessionId, uint claimId, bytes preValue, bytes postValue, bytes proof) public {
+
+  }
+
   function runToStep(bytes program, uint numSteps) constant returns (uint state, bytes32 stateHash) {
     uint i = 0;
     while(i < program.length || i < numSteps) {
@@ -35,9 +39,5 @@ contract SimpleAdderGame is IDisputeResolutionLayer {
       i = i + 1;
     }
     stateHash = keccak256(state);
-  }
-
-  function performFinalVerification(uint sessionId, uint claimId, bytes preValue, bytes postValue, bytes proof) public {
-
   }
 }
