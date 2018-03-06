@@ -3,7 +3,7 @@ pragma solidity ^0.4.18;
 import './IDisputeResolutionLayer.sol';
 
 //TODO: implement interface???. currently gas issue when deploying
-contract SimpleAdderGame is IDisputeResolutionLayer {
+contract SimpleAdderGame {
 
   uint numGames = 0;
 
@@ -59,10 +59,10 @@ contract SimpleAdderGame is IDisputeResolutionLayer {
   }
 
   //TODO: Fix function modifiers
-  function performStepVerification(uint gameId, bytes preValue, bytes postValue, bytes proof) public returns (bool) {
+  function performStepVerification(uint gameId, bytes preState, bytes nextInstruction, bytes proof) public returns (bool) {
     VerificationGame storage game = games[gameId];
-    require(keccak256(preValue) == game.lastHash);
-    uint output = runStep(uint(preValue[0]), uint(postValue[0]));
+    //require(keccak256(preValue[0]) == game.lastHash);
+    uint output = runStep(uint(preState[0]), uint(nextInstruction[0]));
     return (keccak256(output) == game.outputHash);
   }
 
@@ -72,7 +72,7 @@ contract SimpleAdderGame is IDisputeResolutionLayer {
 
   function runSteps(bytes program, uint numSteps) public pure returns (uint state, bytes32 stateHash) {
     uint i = 0;
-    while (i < program.length || i < numSteps) {
+    while (i < program.length && i <= numSteps) {
       uint n = uint(program[i]);
       state = runStep(state, n);
       i = i + 1;
