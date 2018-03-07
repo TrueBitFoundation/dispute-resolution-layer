@@ -1,6 +1,6 @@
 pragma solidity ^0.4.18;
 
-import './IDisputeResolutionLayer.sol';
+import './IComputationLayer.sol';
 
 //TODO: implement interface???. currently gas issue when deploying
 contract SimpleAdderGame {
@@ -23,18 +23,20 @@ contract SimpleAdderGame {
     bytes32 lastHash;
     bool solverConvicted;
     bool verifierConvicted;
+    IComputationLayer vm;
   }
 
   mapping(uint => VerificationGame) private games;
 
   //TODO: should restrict who can create newGame
-  function newGame(address solver, address verifier, bytes input, bytes32 outputHash, uint numSteps) public returns(uint gameId) {
+  function newGame(address solver, address verifier, bytes input, bytes32 outputHash, uint numSteps, IComputationLayer vm) public returns(uint gameId) {
     VerificationGame storage game = games[numGames];
     game.solver = solver;
     game.verifier = verifier;
     game.input = input;
     game.outputHash = outputHash;
     game.numSteps = numSteps;
+    game.vm = vm;
     gameId = numGames;
     numGames = numGames + 1;
     NewGame(gameId, solver, verifier);
@@ -61,22 +63,8 @@ contract SimpleAdderGame {
   //TODO: Fix function modifiers
   function performStepVerification(uint gameId, bytes preState, bytes nextInstruction, bytes proof) public returns (bool) {
     VerificationGame storage game = games[gameId];
-    //require(keccak256(preValue[0]) == game.lastHash);
-    uint output = runStep(uint(preState[0]), uint(nextInstruction[0]));
+    bytes32 stepOutput = game.vm.runStep(preState, nextInstruction);
+    uint output = uint(stepOutput[0]);
     return (keccak256(output) == game.outputHash);
-  }
-
-  function runStep(uint currentState, uint n) public pure returns (uint newState) {
-    newState = currentState + n;
-  }
-
-  function runSteps(bytes program, uint numSteps) public pure returns (uint state, bytes32 stateHash) {
-    uint i = 0;
-    while (i < program.length && i <= numSteps) {
-      uint n = uint(program[i]);
-      state = runStep(state, n);
-      i = i + 1;
-    }
-    stateHash = keccak256(state);
   }
 }
