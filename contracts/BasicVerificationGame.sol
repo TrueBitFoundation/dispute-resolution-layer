@@ -63,7 +63,6 @@ contract BasicVerificationGame {
   function performStepVerification(uint gameId, bytes preState, bytes nextInstruction, bytes proof) public returns (bool) {
     VerificationGame storage game = games[gameId];
     bytes32 stepOutput = game.vm.runStep(preState, nextInstruction);
-    uint output = uint(stepOutput[0]);
-    return (keccak256(output) == game.outputHash);
+    return (keccak256(stepOutput) == game.outputHash);
   }
 }

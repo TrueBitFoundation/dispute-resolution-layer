@@ -1,11 +1,10 @@
 const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
 const SimpleAdderVM = artifacts.require("./test/SimpleAdderVM.sol")
-const simpleAdderOffchain = require('./helper/simpleAdderOffchain')
 const web3 = require('web3')
 
 const toResult = (data) => {
   return {
-    state: data[0].toNumber(),
+    state: "0x" + data[0].slice(-2),//because of encoding issues, uhhhh....
     stateHash: data[1]
   }
 }
@@ -15,7 +14,7 @@ contract('BasicVerificationGame', function(accounts) {
 
   let program = "0x010203040506070809"
   let programLength = (program.length / 2) - 2
-  let output = 45
+  let output = "0x000000000000000000000000000000000000000000000000000000000000002d"//45
   let step = programLength - 1
   let outputHash = web3.utils.soliditySha3(output)
 
@@ -28,6 +27,13 @@ contract('BasicVerificationGame', function(accounts) {
     assert.equal(
       "0x0000000000000000000000000000000000000000000000000000000000000003",
       await simpleAdderVM.runStep.call("0x01", "0x02")
+    )
+  })
+
+  it("should properly run steps", async () => {
+    assert.equal(
+      "0x24",
+      toResult(await simpleAdderVM.runSteps.call(program, step)).state
     )
   })
 
@@ -49,22 +55,18 @@ contract('BasicVerificationGame', function(accounts) {
   })
 
   it("should respond to query", async () => {
-    //let result = toResult(await basicVerificationGame.runSteps.call(program, step))
+    let result = toResult(await simpleAdderVM.runSteps.call(program, step))
 
-    let state = await simpleAdderOffchain(simpleAdderVM, program, step)
-    let stateHash = web3.utils.soliditySha3(state)
-    console.log(state)
-
-    let tx = await basicVerificationGame.respond(gameId, stateHash, {from: accounts[2]})
+    let tx = await basicVerificationGame.respond(gameId, result.stateHash, {from: accounts[2]})
 
     let response = tx.logs[0].args
-    assert.equal(response.hash, stateHash)
+    assert.equal(response.hash, result.stateHash)
     assert.equal(response.gameId.toNumber(), gameId)
   })
 
   it("should perform step verification", async () => {
-    let state = await simpleAdderOffchain(simpleAdderVM, program, step)
-    let verified = await basicVerificationGame.performStepVerification.call(gameId, state, "0x09", web3.utils.soliditySha3(output))
+    let result = toResult(await simpleAdderVM.runSteps.call(program, step))
+    let verified = await basicVerificationGame.performStepVerification.call(gameId, result.state, "0x09", outputHash)
     assert(verified, "step verification was false")
   })
 })
