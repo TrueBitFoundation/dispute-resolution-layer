@@ -1,4 +1,6 @@
-const SimpleAdderGame = artifacts.require("./SimpleAdderGame.sol")
+const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
+const SimpleAdderVM = artifacts.require("./test/SimpleAdderVM.sol")
+const simpleAdderOffchain = require('./helper/simpleAdderOffchain')
 const web3 = require('web3')
 
 const toResult = (data) => {
@@ -8,8 +10,8 @@ const toResult = (data) => {
   }
 }
 
-contract('SimpleAdderGame', function(accounts) {
-  let simpleAdderGame, gameId
+contract('BasicVerificationGame', function(accounts) {
+  let basicVerificationGame, simpleAdderVM, gameId
 
   let program = "0x010203040506070809"
   let programLength = (program.length / 2) - 2
@@ -18,11 +20,19 @@ contract('SimpleAdderGame', function(accounts) {
   let outputHash = web3.utils.soliditySha3(output)
 
   before(async () => {
-    simpleAdderGame = await SimpleAdderGame.deployed()
+    basicVerificationGame = await BasicVerificationGame.deployed()
+    simpleAdderVM = await SimpleAdderVM.deployed()
+  })
+
+  it("should properly add numbers", async () => {
+    assert.equal(
+      "0x0000000000000000000000000000000000000000000000000000000000000003",
+      await simpleAdderVM.runStep.call("0x01", "0x02")
+    )
   })
 
   it("should create a new verification game", async () => {
-    let tx = await simpleAdderGame.newGame(accounts[1], accounts[2], program, outputHash, programLength)
+    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, SimpleAdderVM.address)
     const result = tx.logs[0].args
     gameId = result.gameId.toNumber()
     assert.equal(result.solver, accounts[1])
@@ -31,7 +41,7 @@ contract('SimpleAdderGame', function(accounts) {
 
   it("should query a step", async () => {
     //query final step to make verification game short
-    let tx = await simpleAdderGame.query(gameId, step, {from: accounts[2]})
+    let tx = await basicVerificationGame.query(gameId, step, {from: accounts[2]})
 
     let query = tx.logs[0].args
     assert.equal(query.stepNumber.toNumber(), step)
@@ -39,18 +49,22 @@ contract('SimpleAdderGame', function(accounts) {
   })
 
   it("should respond to query", async () => {
-    let result = toResult(await simpleAdderGame.runSteps.call(program, step))
+    //let result = toResult(await basicVerificationGame.runSteps.call(program, step))
 
-    let tx = await simpleAdderGame.respond(gameId, result.stateHash, {from: accounts[2]})
+    let state = await simpleAdderOffchain(simpleAdderVM, program, step)
+    let stateHash = web3.utils.soliditySha3(state)
+    console.log(state)
+
+    let tx = await basicVerificationGame.respond(gameId, stateHash, {from: accounts[2]})
 
     let response = tx.logs[0].args
-    assert.equal(response.hash, result.stateHash)
+    assert.equal(response.hash, stateHash)
     assert.equal(response.gameId.toNumber(), gameId)
   })
 
   it("should perform step verification", async () => {
-    let result = toResult(await simpleAdderGame.runSteps.call(program, step))
-    let verified = await simpleAdderGame.performStepVerification.call(gameId, result.state, "0x09", web3.utils.soliditySha3(output))
+    let state = await simpleAdderOffchain(simpleAdderVM, program, step)
+    let verified = await basicVerificationGame.performStepVerification.call(gameId, state, "0x09", web3.utils.soliditySha3(output))
     assert(verified, "step verification was false")
   })
 })

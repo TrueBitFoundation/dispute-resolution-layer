@@ -2,8 +2,7 @@ pragma solidity ^0.4.18;
 
 import './IComputationLayer.sol';
 
-//TODO: implement interface???. currently gas issue when deploying
-contract SimpleAdderGame {
+contract BasicVerificationGame {
 
   uint numGames = 0;
 
@@ -55,7 +54,7 @@ contract SimpleAdderGame {
     NewResponse(gameId, hash);
   }
  
-  function timeout(uint gameId) public returns (bool) {
+  function timeout(uint gameId) public view returns (bool) {
     VerificationGame storage game = games[gameId];
     return (block.number > game.currentTime);
   }

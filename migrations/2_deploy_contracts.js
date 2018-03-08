@@ -1,5 +1,5 @@
-const SimpleAdderGame = artifacts.require("./SimpleAdderGame.sol")
+const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
 
 module.exports = function(deployer) {
-  deployer.deploy(SimpleAdderGame)
+  deployer.deploy(BasicVerificationGame)
 }
