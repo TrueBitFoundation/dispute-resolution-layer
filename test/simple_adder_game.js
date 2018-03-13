@@ -40,7 +40,7 @@ contract('BasicVerificationGame', function(accounts) {
   it("should create a new verification game", async () => {
     let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, SimpleAdderVM.address)
     const result = tx.logs[0].args
-    gameId = result.gameId.toNumber()
+    gameId = result.gameId
     assert.equal(result.solver, accounts[1])
     assert.equal(result.verifier, accounts[2])
   })
@@ -51,7 +51,7 @@ contract('BasicVerificationGame', function(accounts) {
 
     let query = tx.logs[0].args
     assert.equal(query.stepNumber.toNumber(), step)
-    assert.equal(query.gameId.toNumber(), gameId)
+    assert.equal(query.gameId, gameId)
   })
 
   it("should respond to query", async () => {
@@ -61,7 +61,7 @@ contract('BasicVerificationGame', function(accounts) {
 
     let response = tx.logs[0].args
     assert.equal(response.hash, result.stateHash)
-    assert.equal(response.gameId.toNumber(), gameId)
+    assert.equal(response.gameId, gameId)
   })
 
   it("should perform step verification", async () => {
