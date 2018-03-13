@@ -87,7 +87,6 @@ contract BasicVerificationGame {
 
     require(game.state == State.Unresolved);
     require(msg.sender == game.solver);
-    require(game.currentStep + 1 == game.lastStep);
 
     bytes32 stepOutput = game.vm.runStep(preState, nextInstruction);
     if (keccak256(stepOutput) == game.outputHash) {

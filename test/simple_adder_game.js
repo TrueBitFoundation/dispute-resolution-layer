@@ -17,6 +17,7 @@ contract('BasicVerificationGame', function(accounts) {
   let output = "0x000000000000000000000000000000000000000000000000000000000000002d"//45
   let step = programLength - 1
   let outputHash = web3.utils.soliditySha3(output)
+  let responseTime = 20
 
   before(async () => {
     basicVerificationGame = await BasicVerificationGame.deployed()
@@ -38,7 +39,7 @@ contract('BasicVerificationGame', function(accounts) {
   })
 
   it("should create a new verification game", async () => {
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, SimpleAdderVM.address)
+    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, responseTime, SimpleAdderVM.address)
     const result = tx.logs[0].args
     gameId = result.gameId
     assert.equal(result.solver, accounts[1])
@@ -57,7 +58,7 @@ contract('BasicVerificationGame', function(accounts) {
   it("should respond to query", async () => {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
 
-    let tx = await basicVerificationGame.respond(gameId, result.stateHash, {from: accounts[2]})
+    let tx = await basicVerificationGame.respond(gameId, result.stateHash, {from: accounts[1]})
 
     let response = tx.logs[0].args
     assert.equal(response.hash, result.stateHash)
@@ -66,7 +67,8 @@ contract('BasicVerificationGame', function(accounts) {
 
   it("should perform step verification", async () => {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
-    let verified = await basicVerificationGame.performStepVerification.call(gameId, result.state, "0x09", outputHash)
-    assert(verified, "step verification was false")
+    await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", outputHash, {from: accounts[1]})
+
+    assert(1, await basicVerificationGame.status.call(gameId))
   })
 })
