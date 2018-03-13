@@ -29,9 +29,11 @@ contract BasicVerificationGame {
 
   mapping(bytes32 => VerificationGame) private games;
 
+  uint uniq;
+
   //TODO: should restrict who can create newGame
   function newGame(address solver, address verifier, bytes input, bytes32 outputHash, uint numSteps, uint responseTime, IComputationLayer vm) public returns(bytes32 gameId) {
-    gameId = keccak256(solver, verifier, outputHash);
+    gameId = keccak256(solver, verifier, outputHash, uniq);
     VerificationGame storage game = games[gameId];
     game.solver = solver;
     game.verifier = verifier;
@@ -41,6 +43,9 @@ contract BasicVerificationGame {
     game.vm = vm;
     game.state = State.Unresolved;
     game.responseTime = responseTime;
+    game.lastParticipant = solver;//if verifier never queries, solver should be able to trigger timeout
+    game.currentTime = block.number;
+    uniq++;
     NewGame(gameId, solver, verifier);
   }
 

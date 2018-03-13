@@ -69,6 +69,6 @@ contract('BasicVerificationGame', function(accounts) {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
     await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", outputHash, {from: accounts[1]})
 
-    assert(1, await basicVerificationGame.status.call(gameId))
+    assert.equal(1, await basicVerificationGame.status.call(gameId))
   })
 })
