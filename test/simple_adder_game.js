@@ -65,6 +65,16 @@ contract('BasicVerificationGame', function(accounts) {
     assert.equal(response.gameId, gameId)
   })
 
+  //This needs to be fixed as it is rather awkward....
+  it("should query a step again...", async () => {
+    //query final step to make verification game short
+    let tx = await basicVerificationGame.query(gameId, step, {from: accounts[2]})
+
+    let query = tx.logs[0].args
+    assert.equal(query.stepNumber.toNumber(), step)
+    assert.equal(query.gameId, gameId)
+  })
+
   it("should perform step verification", async () => {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
     await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", outputHash, {from: accounts[1]})
