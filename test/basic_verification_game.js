@@ -16,7 +16,6 @@ contract('BasicVerificationGame query to high step', function(accounts) {
   let programLength = (program.length / 2) - 2
   let output = "0x000000000000000000000000000000000000000000000000000000000000002d"//45
   let step = programLength - 1
-  let outputHash = web3.utils.soliditySha3(output)
   let responseTime = 20
 
   before(async () => {
@@ -25,7 +24,7 @@ contract('BasicVerificationGame query to high step', function(accounts) {
   })
 
   it("should create a new verification game", async () => {
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, responseTime, SimpleAdderVM.address)
+    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, output, programLength, responseTime, SimpleAdderVM.address)
     const result = tx.logs[0].args
     gameId = result.gameId
     assert.equal(result.solver, accounts[1])
@@ -63,7 +62,7 @@ contract('BasicVerificationGame query to high step', function(accounts) {
 
   it("should perform step verification", async () => {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
-    await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", outputHash, {from: accounts[1]})
+    await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", output, {from: accounts[1]})
 
     assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
@@ -85,7 +84,7 @@ contract('BasicVerificationGame query to low step', function(accounts) {
   })
 
   it("should create a new verification game", async () => {
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, responseTime, SimpleAdderVM.address)
+    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, output, programLength, responseTime, SimpleAdderVM.address)
     const result = tx.logs[0].args
     gameId = result.gameId
     assert.equal(result.solver, accounts[1])
@@ -122,7 +121,7 @@ contract('BasicVerificationGame query to low step', function(accounts) {
 
   it("should perform step verification", async () => {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
-    await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", outputHash, {from: accounts[1]})
+    await basicVerificationGame.performStepVerification(gameId, result.state, "0x00", output, {from: accounts[1]})
 
     assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
   })

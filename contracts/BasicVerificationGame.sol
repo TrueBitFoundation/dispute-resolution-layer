@@ -158,7 +158,7 @@ contract BasicVerificationGame {
 
     //TODO: Use merkle proof to check output hash against proof + root
     bytes32 stepOutput = game.vm.runStep(preState, nextInstruction);
-    if (keccak256(stepOutput) == keccak256(game.highHash)) {
+    if (keccak256(stepOutput) == game.highHash) {
       game.state = State.SolverWon;
     } else {
       game.state = State.ChallengerWon;
@@ -167,5 +167,12 @@ contract BasicVerificationGame {
 
   function status(bytes32 gameId) public view returns (uint8) {
     return uint8(games[gameId].state);
+  }
+
+  function gameData(bytes32 gameId) public view returns (bytes32 lowHash, bytes32 medHash, bytes32 highHash) {
+    VerificationGame storage game = games[gameId];
+    lowHash = game.lowHash;
+    medHash = game.medHash;
+    highHash = game.highHash;
   }
 }
