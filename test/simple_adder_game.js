@@ -58,7 +58,7 @@ contract('BasicVerificationGame', function(accounts) {
   it("should respond to query", async () => {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
 
-    let tx = await basicVerificationGame.respond(gameId, result.stateHash, {from: accounts[1]})
+    let tx = await basicVerificationGame.respond(gameId, step, result.stateHash, {from: accounts[1]})
 
     let response = tx.logs[0].args
     assert.equal(response.hash, result.stateHash)
@@ -69,6 +69,6 @@ contract('BasicVerificationGame', function(accounts) {
     let result = toResult(await simpleAdderVM.runSteps.call(program, step))
     await basicVerificationGame.performStepVerification(gameId, result.state, "0x09", outputHash, {from: accounts[1]})
 
-    assert.equal(1, await basicVerificationGame.status.call(gameId))
+    assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })

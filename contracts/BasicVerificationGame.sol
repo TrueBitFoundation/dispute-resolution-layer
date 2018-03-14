@@ -14,17 +14,17 @@ contract BasicVerificationGame {
   struct VerificationGame {
     address solver;
     address verifier;
-    uint numSteps;
-    bytes input;
-    bytes32 outputHash;
-    uint currentTime;
-    uint currentStep;
-    uint lastStep;
-    bytes32 lastHash;
     address lastParticipant;
+    uint lastParticipantTime;
     IComputationLayer vm;
     State state;
     uint responseTime;
+    uint lowStep;
+    bytes32 lowHash;
+    uint medStep;
+    bytes32 medHash;
+    uint highStep;
+    bytes32 highHash;
   }
 
   mapping(bytes32 => VerificationGame) private games;
@@ -32,19 +32,25 @@ contract BasicVerificationGame {
   uint uniq;
 
   //TODO: should restrict who can create newGame
-  function newGame(address solver, address verifier, bytes input, bytes32 outputHash, uint numSteps, uint responseTime, IComputationLayer vm) public returns(bytes32 gameId) {
-    gameId = keccak256(solver, verifier, outputHash, uniq);
+  function newGame(address solver, address verifier, bytes input, bytes32 output, uint numSteps, uint responseTime, IComputationLayer vm) public {
+    bytes32 gameId = keccak256(solver, verifier, output, uniq);
+
     VerificationGame storage game = games[gameId];
     game.solver = solver;
     game.verifier = verifier;
-    game.input = input;
-    game.outputHash = outputHash;
-    game.numSteps = numSteps;
     game.vm = vm;
     game.state = State.Unresolved;
     game.responseTime = responseTime;
     game.lastParticipant = solver;//if verifier never queries, solver should be able to trigger timeout
-    game.currentTime = block.number;
+    game.lastParticipantTime = block.number;
+
+    game.lowStep = 0;
+    game.lowHash = keccak256(input);
+    game.medStep = 0;
+    game.medHash = bytes32(0);
+    game.highStep = numSteps;
+    game.highHash = keccak256(output);
+
     uniq++;
     NewGame(gameId, solver, verifier);
   }
@@ -55,29 +61,79 @@ contract BasicVerificationGame {
     require(msg.sender == game.verifier);
     require(game.state == State.Unresolved);
 
-    game.currentStep = stepNumber;
-    game.currentTime = block.number;
+    bool isFirstStep = game.medStep == 0;
+    bool haveMedHash = game.medHash != bytes32(0);
+    require(isFirstStep || haveMedHash);
+    // ^ invariant if the step has been set but we don't have a hash for it
+
+    if (stepNumber == game.lowStep && stepNumber + 1 == game.medStep) {
+      // final step of the binary search (lower end)
+      game.highHash = game.medHash;
+      game.highStep = stepNumber + 1;
+    } else if (stepNumber == game.medStep && stepNumber + 1 == game.highStep) {
+      // final step of the binary search (upper end)
+      game.lowHash = game.medHash;
+      game.lowStep = stepNumber;
+    } else {
+      // this next step must be in the correct range
+      //can only query between 0...2049
+      require(stepNumber > game.lowStep && stepNumber < game.highStep);
+
+      // if this is NOT the first query, update the steps and assign the correct hash
+      // (if this IS the first query, we just want to initialize medStep and medHash)
+      if (!isFirstStep) {
+        if (stepNumber < game.medStep) {
+          // if we're iterating lower,
+          //   the new highest is the current middle
+          game.highStep = game.medStep;
+          game.highHash = game.medHash;
+        } else if (stepNumber > game.medStep) {
+          // if we're iterating upwards,
+          //   the new lowest is the current middle
+          game.lowStep = game.medStep;
+          game.lowHash = game.medHash;
+        } else {
+          // and if we're requesting the midStep that we've already requested,
+          // revert to prevent replay.
+          revert();
+        }
+      }
+
+      game.medStep = stepNumber;
+      game.medHash = bytes32(0);
+    }
+
+    game.lastParticipantTime = block.number;
     game.lastParticipant = game.verifier;
+
     NewQuery(gameId, stepNumber);
   }
 
-  function respond(bytes32 gameId, bytes32 hash) public {
+  function respond(bytes32 gameId, uint stepNumber, bytes32 hash) public {
     VerificationGame storage game = games[gameId];
 
     require(msg.sender == game.solver);
     require(game.state == State.Unresolved);
 
-    game.lastHash = hash;
-    game.lastStep = game.currentStep;
-    game.currentTime = block.number;
+    // Require step to avoid replay problems
+    require(stepNumber == game.medStep);
+
+    // provided hash cannot be zero; as that is a special flag.
+    require(hash != 0);
+
+    // record the claimed hash
+    require(game.medHash == bytes32(0));
+    game.medHash = hash;
+    game.lastParticipantTime = block.number;
     game.lastParticipant = game.solver;
+
     NewResponse(gameId, hash);
   }
  
   function timeout(bytes32 gameId) public {
     VerificationGame storage game = games[gameId];
 
-    require(block.number > game.currentTime + game.responseTime);
+    require(block.number > game.lastParticipantTime + game.responseTime);
     require(game.state == State.Unresolved);
 
     if (game.lastParticipant == game.solver) {
@@ -87,14 +143,22 @@ contract BasicVerificationGame {
     }
   }
 
-  function performStepVerification(bytes32 gameId, bytes preState, bytes nextInstruction, bytes proof) public returns (bool) {
+  function performStepVerification(bytes32 gameId, bytes preState, bytes nextInstruction, bytes proof) public {
     VerificationGame storage game = games[gameId];
 
     require(game.state == State.Unresolved);
     require(msg.sender == game.solver);
 
+    require(game.lowStep + 1 == game.highStep);
+    // ^ must be at the end of the binary search according to the smart contract
+
+    //TODO: Figure out what to do with these parts
+    //require(keccak256(preValue) == s.lowHash);
+    //require(keccak256(postValue) == s.highHash);
+
+    //TODO: Use merkle proof to check output hash against proof + root
     bytes32 stepOutput = game.vm.runStep(preState, nextInstruction);
-    if (keccak256(stepOutput) == game.outputHash) {
+    if (keccak256(stepOutput) == keccak256(game.highHash)) {
       game.state = State.SolverWon;
     } else {
       game.state = State.ChallengerWon;
