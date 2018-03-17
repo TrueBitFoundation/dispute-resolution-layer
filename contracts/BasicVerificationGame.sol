@@ -8,6 +8,7 @@ contract BasicVerificationGame {
   event NewGame(bytes32 gameId, address solver, address verifier);
   event NewQuery(bytes32 gameId, uint stepNumber);
   event NewResponse(bytes32 gameId, bytes32 hash);
+  event FinalData(bytes32 output, bytes32 outputHash);
 
   enum State { Unresolved, SolverWon, ChallengerWon }
 
@@ -25,6 +26,8 @@ contract BasicVerificationGame {
     bytes32 medHash;
     uint highStep;
     bytes32 highHash;
+    bytes32 programMerkleRoot;
+    bytes32 lastInstructionHash;
   }
 
   mapping(bytes32 => VerificationGame) private games;
@@ -32,8 +35,8 @@ contract BasicVerificationGame {
   uint uniq;
 
   //TODO: should restrict who can create newGame
-  function newGame(address solver, address verifier, bytes input, bytes32 output, uint numSteps, uint responseTime, IComputationLayer vm) public {
-    bytes32 gameId = keccak256(solver, verifier, output, uniq);
+  function newGame(address solver, address verifier, bytes32 programMerkleRoot, bytes32 outputHash, uint numSteps, uint responseTime, IComputationLayer vm) public {
+    bytes32 gameId = keccak256(solver, verifier, outputHash, uniq);
 
     VerificationGame storage game = games[gameId];
     game.solver = solver;
@@ -45,11 +48,12 @@ contract BasicVerificationGame {
     game.lastParticipantTime = block.number;
 
     game.lowStep = 0;
-    game.lowHash = keccak256(input);
+    game.lowHash = keccak256(0);//initial state hash
     game.medStep = 0;
     game.medHash = bytes32(0);
     game.highStep = numSteps;
-    game.highHash = keccak256(output);
+    game.highHash = outputHash;
+    game.programMerkleRoot = programMerkleRoot;
 
     uniq++;
     NewGame(gameId, solver, verifier);
@@ -109,7 +113,7 @@ contract BasicVerificationGame {
     NewQuery(gameId, stepNumber);
   }
 
-  function respond(bytes32 gameId, uint stepNumber, bytes32 hash) public {
+  function respond(bytes32 gameId, uint stepNumber, bytes32 hash, uint instruction) public {
     VerificationGame storage game = games[gameId];
 
     require(msg.sender == game.solver);
@@ -124,6 +128,7 @@ contract BasicVerificationGame {
     // record the claimed hash
     require(game.medHash == bytes32(0));
     game.medHash = hash;
+    game.lastInstructionHash = keccak256(instruction);
     game.lastParticipantTime = block.number;
     game.lastParticipant = game.solver;
 
@@ -143,7 +148,8 @@ contract BasicVerificationGame {
     }
   }
 
-  function performStepVerification(bytes32 gameId, bytes preState, bytes nextInstruction, bytes proof) public {
+  //Should probably replace preValue and postValue with preInstruction and postInstruction
+  function performStepVerification(bytes32 gameId, uint preValue, uint postValue, uint nextInstruction, bytes32[] proof) public {
     VerificationGame storage game = games[gameId];
 
     require(game.state == State.Unresolved);
@@ -152,17 +158,22 @@ contract BasicVerificationGame {
     require(game.lowStep + 1 == game.highStep);
     // ^ must be at the end of the binary search according to the smart contract
 
-    //TODO: Figure out what to do with these parts
-    //require(keccak256(preValue) == s.lowHash);
-    //require(keccak256(postValue) == s.highHash);
+    require(keccak256(preValue) == game.lowHash);
+    require(keccak256(postValue) == game.highHash);
 
-    //TODO: Use merkle proof to check output hash against proof + root
-    bytes32 stepOutput = game.vm.runStep(preState, nextInstruction);
+    //Prove that the nextInstruction is part of the merkleTree
+    //Only works for this edge case so far
+    require(keccak256(game.lastInstructionHash, keccak256(nextInstruction)) == proof[1]);
+    require(keccak256(proof[0], proof[1]) == game.programMerkleRoot);
+
+    //The proof is the next instruction, because the next instruction provides the path from lowHash to highHash
+    uint stepOutput = game.vm.runStep(preValue, nextInstruction);//could change stepOutput to bytes32
     if (keccak256(stepOutput) == game.highHash) {
       game.state = State.SolverWon;
     } else {
       game.state = State.ChallengerWon;
     }
+    //FinalData(stepOutput, keccak256(stepOutput));
   }
 
   function status(bytes32 gameId) public view returns (uint8) {
