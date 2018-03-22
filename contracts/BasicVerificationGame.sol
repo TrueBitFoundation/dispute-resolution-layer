@@ -35,8 +35,8 @@ contract BasicVerificationGame {
   uint uniq;
 
   //TODO: should restrict who can create newGame
-  function newGame(address solver, address verifier, bytes32 programMerkleRoot, bytes32 outputHash, uint numSteps, uint responseTime, IComputationLayer vm) public {
-    bytes32 gameId = keccak256(solver, verifier, outputHash, uniq);
+  function newGame(address solver, address verifier, bytes32 programMerkleRoot, bytes32 finalStateHash, uint numSteps, uint responseTime, IComputationLayer vm) public {
+    bytes32 gameId = keccak256(solver, verifier, finalStateHash, uniq);
 
     VerificationGame storage game = games[gameId];
     game.solver = solver;
@@ -52,7 +52,7 @@ contract BasicVerificationGame {
     game.medStep = 0;
     game.medHash = bytes32(0);
     game.highStep = numSteps;
-    game.highHash = outputHash;
+    game.highHash = finalStateHash;
     game.programMerkleRoot = programMerkleRoot;
 
     uniq++;
@@ -113,7 +113,7 @@ contract BasicVerificationGame {
     NewQuery(gameId, stepNumber);
   }
 
-  function respond(bytes32 gameId, uint stepNumber, bytes32 hash, uint instruction) public {
+  function respond(bytes32 gameId, uint stepNumber, bytes32 hash) public {
     VerificationGame storage game = games[gameId];
 
     require(msg.sender == game.solver);
@@ -128,7 +128,7 @@ contract BasicVerificationGame {
     // record the claimed hash
     require(game.medHash == bytes32(0));
     game.medHash = hash;
-    game.lastInstructionHash = keccak256(instruction);
+
     game.lastParticipantTime = block.number;
     game.lastParticipant = game.solver;
 
@@ -148,8 +148,18 @@ contract BasicVerificationGame {
     }
   }
 
+  function merklizeProof(bytes32[] proof) public returns (bytes32 merkleRoot) {
+    for (uint i = 0; i < proof.length; i++) {
+      if (i == 0) 
+        merkleRoot = proof[0];
+      else
+        merkleRoot = keccak256(merkleRoot, proof[i]);
+
+    }
+  }
+
   //Should probably replace preValue and postValue with preInstruction and postInstruction
-  function performStepVerification(bytes32 gameId, uint preValue, uint postValue, uint nextInstruction, bytes32[] proof) public {
+  function performStepVerification(bytes32 gameId, bytes32[4] preStepState, bytes32[4] postStepState, bytes32[] proof) public {
     VerificationGame storage game = games[gameId];
 
     require(game.state == State.Unresolved);
@@ -158,17 +168,22 @@ contract BasicVerificationGame {
     require(game.lowStep + 1 == game.highStep);
     // ^ must be at the end of the binary search according to the smart contract
 
-    require(keccak256(preValue) == game.lowHash);
-    require(keccak256(postValue) == game.highHash);
+    require(game.vm.merklizeState(preStepState) == game.lowHash);
+    require(game.vm.merklizeState(postStepState) == game.highHash);
 
-    //Prove that the nextInstruction is part of the merkleTree
-    //Only works for this edge case so far
-    require(keccak256(game.lastInstructionHash, keccak256(nextInstruction)) == proof[1]);
-    require(keccak256(proof[0], proof[1]) == game.programMerkleRoot);
+    //require that the next instruction be included in the program merkle root
+    require(game.programMerkleRoot == merklizeProof(proof));
 
-    //The proof is the next instruction, because the next instruction provides the path from lowHash to highHash
-    uint stepOutput = game.vm.runStep(preValue, nextInstruction);//could change stepOutput to bytes32
-    if (keccak256(stepOutput) == game.highHash) {
+    uint currentStep = uint(preStepState[3]);
+
+    bytes32[4] memory newState;
+    if (currentStep % 2 == 0) {
+      newState = game.vm.runStep(preStepState, proof[0]);//pass in next instruction
+    } else {
+      newState = game.vm.runStep(preStepState, proof[1]);
+    }
+
+    if (game.vm.merklizeState(newState) == game.highHash) {
       game.state = State.SolverWon;
     } else {
       game.state = State.ChallengerWon;
