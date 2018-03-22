@@ -1,5 +1,5 @@
-const DisputeResolutionLayer = artifacts.require("./DisputeResolutionLayer.sol");
+const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
 
 module.exports = function(deployer) {
-  deployer.deploy(DisputeResolutionLayer);
-};
+  deployer.deploy(BasicVerificationGame)
+}
