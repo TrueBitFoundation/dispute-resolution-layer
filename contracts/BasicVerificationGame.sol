@@ -60,6 +60,17 @@ contract BasicVerificationGame {
     NewGame(gameId, solver, verifier);
   }
 
+  function status(bytes32 gameId) public view returns (uint8) {
+    return uint8(games[gameId].state);
+  }
+
+  function gameData(bytes32 gameId) public view returns (uint low, uint med, uint high) {
+    VerificationGame storage game = games[gameId];
+    low = game.lowStep;
+    med = game.medStep;
+    high = game.highStep;
+  }
+
   function query(bytes32 gameId, uint stepNumber) public {
     VerificationGame storage game = games[gameId];
 
@@ -82,7 +93,7 @@ contract BasicVerificationGame {
     } else {
       // this next step must be in the correct range
       //can only query between 0...2049
-      require(stepNumber >= game.lowStep && stepNumber < game.highStep);
+      require(stepNumber > game.lowStep && stepNumber < game.highStep);
 
       // if this is NOT the first query, update the steps and assign the correct hash
       // (if this IS the first query, we just want to initialize medStep and medHash)
@@ -210,16 +221,5 @@ contract BasicVerificationGame {
       game.state = State.ChallengerWon;
     }
     //FinalData(stepOutput, keccak256(stepOutput));
-  }
-
-  function status(bytes32 gameId) public view returns (uint8) {
-    return uint8(games[gameId].state);
-  }
-
-  function gameData(bytes32 gameId) public view returns (uint low, uint med, uint high) {
-    VerificationGame storage game = games[gameId];
-    low = game.lowStep;
-    med = game.medStep;
-    high = game.highStep;
   }
 }
