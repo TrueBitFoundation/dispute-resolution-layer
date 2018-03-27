@@ -48,7 +48,8 @@ contract BasicVerificationGame {
     game.lastParticipantTime = block.number;
 
     game.lowStep = 0;
-    game.lowHash = keccak256(0);//initial state hash
+    bytes32[3] memory initialState = [bytes32(0), bytes32(0), bytes32(0)];
+    game.lowHash = game.vm.merklizeState(initialState);
     game.medStep = 0;
     game.medHash = bytes32(0);
     game.highStep = numSteps;
@@ -81,7 +82,7 @@ contract BasicVerificationGame {
     } else {
       // this next step must be in the correct range
       //can only query between 0...2049
-      require(stepNumber > game.lowStep && stepNumber < game.highStep);
+      require(stepNumber >= game.lowStep && stepNumber < game.highStep);
 
       // if this is NOT the first query, update the steps and assign the correct hash
       // (if this IS the first query, we just want to initialize medStep and medHash)
@@ -148,18 +149,45 @@ contract BasicVerificationGame {
     }
   }
 
-  function merklizeProof(bytes32[] proof) public returns (bytes32 merkleRoot) {
-    for (uint i = 0; i < proof.length; i++) {
-      if (i == 0) 
-        merkleRoot = proof[0];
-      else
-        merkleRoot = keccak256(merkleRoot, proof[i]);
+  //https://github.com/ameensol/merkle-tree-solidity/blob/master/src/MerkleProof.sol
+  function checkProofOrdered(bytes proof, bytes32 root, bytes32 hash, uint256 index) public pure returns (bool) {
+    // use the index to determine the node ordering
+    // index ranges 1 to n
 
+    bytes32 el;
+    bytes32 h = hash;
+    uint256 remaining;
+
+    for (uint256 j = 32; j <= proof.length; j += 32) {
+      assembly {
+        el := mload(add(proof, j))
+      }
+
+      // calculate remaining elements in proof
+      remaining = (proof.length - j + 32) / 32;
+
+      // we don't assume that the tree is padded to a power of 2
+      // if the index is odd then the proof will start with a hash at a higher
+      // layer, so we have to adjust the index to be the index at that layer
+      while (remaining > 0 && index % 2 == 1 && index > 2 ** remaining) {
+        index = uint(index) / 2 + 1;
+      }
+
+      if (index % 2 == 0) {
+        h = keccak256(el, h);
+        index = index / 2;
+      } else {
+        h = keccak256(h, el);
+        index = uint(index) / 2 + 1;
+      }
     }
+
+    return h == root;
   }
 
+
   //Should probably replace preValue and postValue with preInstruction and postInstruction
-  function performStepVerification(bytes32 gameId, bytes32[4] preStepState, bytes32[4] postStepState, bytes32[] proof) public {
+  function performStepVerification(bytes32 gameId, bytes32[3] preStepState, bytes32[3] postStepState, bytes proof) public {
     VerificationGame storage game = games[gameId];
 
     require(game.state == State.Unresolved);
@@ -172,16 +200,9 @@ contract BasicVerificationGame {
     require(game.vm.merklizeState(postStepState) == game.highHash);
 
     //require that the next instruction be included in the program merkle root
-    require(game.programMerkleRoot == merklizeProof(proof));
+    require(checkProofOrdered(proof, game.programMerkleRoot, keccak256(postStepState[0]), game.highStep));
 
-    uint currentStep = uint(preStepState[3]);
-
-    bytes32[4] memory newState;
-    if (currentStep % 2 == 0) {
-      newState = game.vm.runStep(preStepState, proof[0]);//pass in next instruction
-    } else {
-      newState = game.vm.runStep(preStepState, proof[1]);
-    }
+    bytes32[3] memory newState = game.vm.runStep(preStepState, game.highStep, postStepState[0]);
 
     if (game.vm.merklizeState(newState) == game.highHash) {
       game.state = State.SolverWon;
@@ -195,10 +216,10 @@ contract BasicVerificationGame {
     return uint8(games[gameId].state);
   }
 
-  function gameData(bytes32 gameId) public view returns (bytes32 lowHash, bytes32 medHash, bytes32 highHash) {
+  function gameData(bytes32 gameId) public view returns (uint low, uint med, uint high) {
     VerificationGame storage game = games[gameId];
-    lowHash = game.lowHash;
-    medHash = game.medHash;
-    highHash = game.highHash;
+    low = game.lowStep;
+    med = game.medStep;
+    high = game.highStep;
   }
 }
