@@ -10,8 +10,14 @@ Go [here](https://github.com/TrueBitFoundation/Developer-Resources/blob/master/d
 
 ## Installation
 
+Ensure you have truffle and an Ethereum test net like ganache installed
 ```
 npm install -g truffle ganache-cli
+```
+
+Then install the package's dependencies
+```
+npm install
 ```
 
 ## Testing
