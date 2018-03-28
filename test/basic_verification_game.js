@@ -1,6 +1,8 @@
 const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
 const SimpleAdderVM = artifacts.require("./test/SimpleAdderVM.sol")
 const web3 = require('web3')
+const merkleTree = require('./helpers/merkleTree')
+const sha3 = require('ethereumjs-util').sha3
 
 const toResult = (data) => {
   return {
@@ -24,19 +26,26 @@ contract('BasicVerificationGame query to high step', function(accounts) {
     "0x0000000000000000000000000000000000000000000000000000000000000009"
   ]   
 
-  let programLength = program.length - 1
+  let programLength = program.length
   let output = 45
-  let step = programLength - 1
+  let step = 1
   let responseTime = 20
+  let checkProofOrderedSolidity
+  let mtree
+  let hashes = program.map(e => sha3(e))
+  let root
 
   before(async () => {
     basicVerificationGame = await BasicVerificationGame.deployed()
     simpleAdderVM = await SimpleAdderVM.deployed()
+    checkProofOrderedSolidity = merkleTree.checkProofOrderedSolidityFactory(basicVerificationGame.checkProofOrdered)
+    // Set flag to true to be ordered
+    mtree = new merkleTree.MerkleTree(hashes, true)
+    root = mtree.getRoot()
   })
 
   it("should create a new verification game", async () => {
-    let programMerkleRoot = await basicVerificationGame.merklizeProof.call(program)
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], programMerkleRoot, web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address)
+    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], merkleTree.bufToHex(root), web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address)
     const result = tx.logs[0].args
     gameId = result.gameId
     assert.equal(result.solver, accounts[1])
@@ -62,28 +71,28 @@ contract('BasicVerificationGame query to high step', function(accounts) {
     assert.equal(response.gameId, gameId)
   })
 
-  //This needs to be fixed as it is rather awkward....
-  it("should query a step again...", async () => {
+  it("should query next step down", async () => {
     //query final step to make verification game short
-    let tx = await basicVerificationGame.query(gameId, step, {from: accounts[2]})
+    let tx = await basicVerificationGame.query(gameId, step-1, {from: accounts[2]})
 
     let query = tx.logs[0].args
-    assert.equal(query.stepNumber.toNumber(), step)
+    assert.equal(query.stepNumber.toNumber(), step-1)
     assert.equal(query.gameId, gameId)
   })
 
   it("should perform step verification", async () => {
-    let preStep = toResult(await simpleAdderVM.runSteps.call(program, step))
-    let postStep = await simpleAdderVM.runStep.call(preStep.state, program[step+1])
+    let lowStepState = toResult(await simpleAdderVM.runSteps.call(program, step-1)).state
 
-    let merkleProof = [
-      await basicVerificationGame.merklizeProof.call(program.slice(0, -1)),
-      "0x0000000000000000000000000000000000000000000000000000000000000009"
-    ]
+    let highStep = step
+    let highStepIndex = step-1
+    let highStepState = await simpleAdderVM.runStep.call(lowStepState, highStep, program[highStepIndex])
 
-    tx = await basicVerificationGame.performStepVerification(gameId, preStep.state, postStep, merkleProof, {from: accounts[1]})
-    //assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
+    let proof = mtree.getProofOrdered(hashes[highStepIndex], highStep)
+    const newProof = '0x' + proof.map(e => e.toString('hex')).join('')
+
+    assert(await checkProofOrderedSolidity(proof, root, hashes[highStepIndex], highStep))
+
+    tx = await basicVerificationGame.performStepVerification(gameId, lowStepState, highStepState, newProof, {from: accounts[1]})
+    assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })
-
-//TODO: Make test where game queries to low step

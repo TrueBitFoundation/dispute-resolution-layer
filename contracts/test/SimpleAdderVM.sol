@@ -8,20 +8,22 @@ contract SimpleAdderVM {
   //Reg1: Stack1 Accum
   //Reg2: Stack2 Result
   //Reg3: StepCounter
-  function runStep(bytes32[4] currentState, bytes32 nextInput) public pure returns (bytes32[4] newState) {
+  function runStep(bytes32[3] currentState, uint stepNumber, bytes32 nextInput) public pure returns (bytes32[3] newState) {
 
-    newState[0] = nextInput;//Copy input
-    newState[1] = currentState[2];//Copy last result as new accum
+    require(currentState[2] == bytes32(stepNumber-1));
 
-    //Use Stack0 and Stack1 registers to compute result
-    bytes32 sum = bytes32(uint(newState[0]) + uint(currentState[1]));//Add input by the previous state's accum
-    newState[2] = sum;//Store result in Stack2 register
-
-    newState[3] = bytes32(uint(currentState[3]) + 1);//Increment step counter
+    if (stepNumber == 0) {
+      require(currentState[0] == 0x0 && currentState[1] == 0x0 && currentState[2] == 0x0);
+      return currentState;
+    } else {
+      newState[0] = nextInput;
+      newState[1] = bytes32(uint(currentState[1]) + uint(nextInput));
+      newState[2] = bytes32(stepNumber);
+    }
   }
 
   //Simple list merklization (works like sum)
-  function merklizeState(bytes32[4] state) public pure returns (bytes32 merkleRoot) {
+  function merklizeState(bytes32[3] state) public pure returns (bytes32 merkleRoot) {
     for (uint i = 0; i < state.length; i++) {
       if (i == 0) {
         merkleRoot = state[0];
@@ -33,16 +35,18 @@ contract SimpleAdderVM {
 
   //Used for generating results for query/response
   //Run offchain
-  function runSteps(uint[] program, uint numSteps) public pure returns (bytes32[4] state, bytes32 stateHash) {
+  function runSteps(bytes32[] program, uint numSteps) public pure returns (bytes32[3] state, bytes32 stateHash) {
     uint i = 0;
 
-    while (i < program.length && i <= numSteps-1) {
-      bytes32 nextInstruction = bytes32(program[uint(state[3])]);
-      state = runStep(state, nextInstruction);
-      i+=1;
+    while (i < program.length && i <= numSteps) {
+      if (i > 0) {
+        bytes32 nextInstruction = program[i-1];
+        state = runStep(state, i, nextInstruction); 
+      }
+      i += 1;
     }
 
     stateHash = merklizeState(state);
   }
-  
+
 }
