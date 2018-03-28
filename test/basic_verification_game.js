@@ -81,18 +81,18 @@ contract('BasicVerificationGame query to high step', function(accounts) {
   })
 
   it("should perform step verification", async () => {
-    let preState = toResult(await simpleAdderVM.runSteps.call(program, step-1)).state
+    let lowStepState = toResult(await simpleAdderVM.runSteps.call(program, step-1)).state
 
-    let postStepNum = step
-    let postStepIndex = postStepNum-1
-    let postState = await simpleAdderVM.runStep.call(preState, postStepNum, program[postStepIndex])
+    let highStep = step
+    let highStepIndex = step-1
+    let highStepState = await simpleAdderVM.runStep.call(lowStepState, highStep, program[highStepIndex])
 
-    let proof = mtree.getProofOrdered(hashes[postStepIndex], postStepNum)
+    let proof = mtree.getProofOrdered(hashes[highStepIndex], highStep)
     const newProof = '0x' + proof.map(e => e.toString('hex')).join('')
 
-    assert(await checkProofOrderedSolidity(proof, root, hashes[postStepIndex], postStepNum))
+    assert(await checkProofOrderedSolidity(proof, root, hashes[highStepIndex], highStep))
 
-    tx = await basicVerificationGame.performStepVerification(gameId, preState, postState, newProof, {from: accounts[1]})
+    tx = await basicVerificationGame.performStepVerification(gameId, lowStepState, highStepState, newProof, {from: accounts[1]})
     assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })
