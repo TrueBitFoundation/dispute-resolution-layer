@@ -1,3 +1,6 @@
+// Copyright (C) 2018 TrueBit
+// See Copyright Notice in LICENSE-MIT.txt
+
 const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
 const web3 = require('web3')
 const merkleTree = require('./helpers/merkleTree')
