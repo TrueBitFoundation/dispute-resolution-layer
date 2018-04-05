@@ -27,7 +27,6 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         uint highStep;
         bytes32 highHash;
         bytes32 programMerkleRoot;
-        bytes32 lastInstructionHash;
         bytes32 spec;
     }
 
