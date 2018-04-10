@@ -1,5 +1,5 @@
 const fs = require('fs')
-const SimpleAdderVM = artifacts.require("./SimpleAdderVM.sol")
+const SimpleAdderVM = artifacts.require("./test/SimpleAdderVM.sol")
 const BasicVerificationGame = artifacts.require("./BasicVerificationGame.sol")
 
 module.exports = (deployer, network) => {
