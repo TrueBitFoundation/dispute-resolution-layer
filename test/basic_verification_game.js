@@ -44,12 +44,14 @@ contract('BasicVerificationGame query to high step', function(accounts) {
     root = mtree.getRoot()
   })
 
-  it("should create a new verification game", async () => {
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], merkleTree.bufToHex(root), web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address)
-    const result = tx.logs[0].args
-    gameId = result.gameId
-    assert.equal(result.solver, accounts[1])
-    assert.equal(result.verifier, accounts[2])
+  it("should challenge and initialize", async () => {
+    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], {from: accounts[2]})
+
+    let log = tx.logs[0]
+
+    gameId = log.args.gameId
+
+    await basicVerificationGame.initGame(gameId, merkleTree.bufToHex(root), web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address, {from: accounts[2]})
   })
 
   it("should query a step", async () => {
@@ -93,6 +95,6 @@ contract('BasicVerificationGame query to high step', function(accounts) {
     assert(await checkProofOrderedSolidity(proof, root, hashes[highStepIndex], highStep))
 
     tx = await basicVerificationGame.performStepVerification(gameId, lowStepState, highStepState, newProof, {from: accounts[1]})
-    assert.equal(1, (await basicVerificationGame.status.call(gameId)).toNumber())
+    assert.equal(3, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })

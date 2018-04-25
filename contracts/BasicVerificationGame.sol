@@ -5,12 +5,12 @@ import "./IDisputeResolutionLayer.sol";
 
 contract BasicVerificationGame {
 
+    event ChallengeCommitted(address solver, address verifier, bytes32 gameId);
     event NewGame(bytes32 gameId, address solver, address verifier);
     event NewQuery(bytes32 gameId, uint stepNumber);
     event NewResponse(bytes32 gameId, bytes32 hash);
-    event FinalData(bytes32 output, bytes32 outputHash);
 
-    enum State { Unresolved, SolverWon, ChallengerWon }
+    enum State { Uninitialized, Challenged, Unresolved, SolverWon, ChallengerWon }
 
     struct VerificationGame {
         address solver;
@@ -34,30 +34,41 @@ contract BasicVerificationGame {
 
     uint uniq;
 
-    //TODO: should restrict who can create newGame
-    function newGame(address solver, address verifier, bytes32 programMerkleRoot, bytes32 finalStateHash, uint numSteps, uint responseTime, IComputationLayer vm) public {
-        bytes32 gameId = keccak256(solver, verifier, finalStateHash, uniq);
+    //This commits a verifier to a challenge, if they dont send a query before the response time they are eligible to be penalized.
+    function commitChallenge(address solver, address verifier) public returns (bytes32 gameId) {
+        gameId = keccak256(solver, verifier, uniq);
 
         VerificationGame storage game = games[gameId];
         game.solver = solver;
         game.verifier = verifier;
-        game.vm = vm;
-        game.state = State.Unresolved;
-        game.responseTime = responseTime;
-        game.lastParticipant = solver;//if verifier never queries, solver should be able to trigger timeout
-        game.lastParticipantTime = block.number;
-
-        game.lowStep = 0;
-        bytes32[3] memory initialState = [bytes32(0), bytes32(0), bytes32(0)];
-        game.lowHash = game.vm.merklizeState(initialState);
-        game.medStep = 0;
-        game.medHash = bytes32(0);
-        game.highStep = numSteps;
-        game.highHash = finalStateHash;
-        game.programMerkleRoot = programMerkleRoot;
+        game.state = State.Challenged;
 
         uniq++;
-        NewGame(gameId, solver, verifier);
+        ChallengeCommitted(solver, verifier, gameId);
+    }
+
+    // This is Dispute Resolution Layer specific
+    function initGame(bytes32 gameId, bytes32 programMerkleRoot, bytes32 finalStateHash, uint numSteps, uint responseTime, IComputationLayer vm) public {
+        VerificationGame storage game = games[gameId];
+
+        require(game.state == State.Challenged);
+
+        game.state = State.Unresolved;
+        game.programMerkleRoot = programMerkleRoot;
+        game.vm = vm;
+        game.responseTime = responseTime;
+        game.lastParticipant = game.solver;//if verifier never queries, solver should be able to trigger timeout
+        game.lastParticipantTime = block.number;
+
+        //Initialize game session and 
+        game.highHash = finalStateHash;
+        game.highStep = numSteps;
+        //game.medHash = bytes32(0);
+        //game.medStep = 0;
+
+        bytes32[3] memory initialState = [bytes32(0), bytes32(0), bytes32(0)];
+        game.lowHash = game.vm.merklizeState(initialState);
+        //game.lowStep = 0;
     }
 
     function status(bytes32 gameId) public view returns (uint8) {
@@ -152,7 +163,7 @@ contract BasicVerificationGame {
         VerificationGame storage game = games[gameId];
 
         require(block.number > game.lastParticipantTime + game.responseTime);
-        require(game.state == State.Unresolved);
+        require(game.state == State.Unresolved || game.state == State.Challenged);
 
         if (game.lastParticipant == game.solver) {
             game.state = State.SolverWon;
