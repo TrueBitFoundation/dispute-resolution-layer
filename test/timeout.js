@@ -3,6 +3,8 @@ const SimpleAdderVM = artifacts.require("./test/SimpleAdderVM.sol")
 const Web3 = require('web3')
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"))
 const mineBlocks = require('./helpers/mineBlocks')
+const merkleTree = require('./helpers/merkleTree')
+const sha3 = require('ethereumjs-util').sha3
 
 const toResult = (data) => {
   return {
@@ -14,24 +16,44 @@ const toResult = (data) => {
 contract('Timeout Game with no query', function(accounts) {
   let basicVerificationGame, simpleAdderVM, gameId
 
-  let program = "0x010203040506070809"
-  let programLength = (program.length / 2) - 2
-  let output = "0x000000000000000000000000000000000000000000000000000000000000002d"//45
-  let step = programLength - 1
-  let outputHash = web3.utils.soliditySha3(output)
+  let program = [ 
+    "0x0000000000000000000000000000000000000000000000000000000000000001",
+    "0x0000000000000000000000000000000000000000000000000000000000000002",
+    "0x0000000000000000000000000000000000000000000000000000000000000003",
+    "0x0000000000000000000000000000000000000000000000000000000000000004",
+    "0x0000000000000000000000000000000000000000000000000000000000000005",
+    "0x0000000000000000000000000000000000000000000000000000000000000006",
+    "0x0000000000000000000000000000000000000000000000000000000000000007",
+    "0x0000000000000000000000000000000000000000000000000000000000000008",
+    "0x0000000000000000000000000000000000000000000000000000000000000009"
+  ]
+
+  let programLength = program.length
+  let output = 45
+  let step = 1
   let responseTime = 20
+  let checkProofOrderedSolidity
+  let mtree
+  let hashes = program.map(e => sha3(e))
+  let root
 
   before(async () => {
-    basicVerificationGame = await BasicVerificationGame.new()
-    simpleAdderVM = await SimpleAdderVM.new()
+    basicVerificationGame = await BasicVerificationGame.deployed()
+    simpleAdderVM = await SimpleAdderVM.deployed()
+    checkProofOrderedSolidity = merkleTree.checkProofOrderedSolidityFactory(basicVerificationGame.checkProofOrdered)
+    // Set flag to true to be ordered
+    mtree = new merkleTree.MerkleTree(hashes, true)
+    root = mtree.getRoot()
   })
 
-  it("should create a new verification game", async () => {
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, responseTime, SimpleAdderVM.address)
-    const result = tx.logs[0].args
-    gameId = result.gameId
-    assert.equal(result.solver, accounts[1])
-    assert.equal(result.verifier, accounts[2])
+  it("should challenge and initialize", async () => {
+    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], {from: accounts[2]})
+
+    let log = tx.logs[0]
+
+    gameId = log.args.gameId
+
+    await basicVerificationGame.initGame(gameId, merkleTree.bufToHex(root), web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address, {from: accounts[2]})
   })
 
   it("should trigger timeout", async () => {
@@ -39,31 +61,51 @@ contract('Timeout Game with no query', function(accounts) {
     //query final step to make verification game short
     await basicVerificationGame.timeout(gameId, {from: accounts[1]})
 
-    assert.equal(1, await basicVerificationGame.status.call(gameId))
+    assert.equal(3, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })
 
 contract('Timeout game with no response', function(accounts) {
   let basicVerificationGame, simpleAdderVM, gameId
 
-  let program = "0x010203040506070809"
-  let programLength = (program.length / 2) - 2
-  let output = "0x000000000000000000000000000000000000000000000000000000000000002d"//45
-  let step = programLength - 1
-  let outputHash = web3.utils.soliditySha3(output)
+  let program = [ 
+    "0x0000000000000000000000000000000000000000000000000000000000000001",
+    "0x0000000000000000000000000000000000000000000000000000000000000002",
+    "0x0000000000000000000000000000000000000000000000000000000000000003",
+    "0x0000000000000000000000000000000000000000000000000000000000000004",
+    "0x0000000000000000000000000000000000000000000000000000000000000005",
+    "0x0000000000000000000000000000000000000000000000000000000000000006",
+    "0x0000000000000000000000000000000000000000000000000000000000000007",
+    "0x0000000000000000000000000000000000000000000000000000000000000008",
+    "0x0000000000000000000000000000000000000000000000000000000000000009"
+  ]
+
+  let programLength = program.length
+  let output = 45
+  let step = 1
   let responseTime = 20
+  let checkProofOrderedSolidity
+  let mtree
+  let hashes = program.map(e => sha3(e))
+  let root
 
   before(async () => {
-    basicVerificationGame = await BasicVerificationGame.new()
-    simpleAdderVM = await SimpleAdderVM.new()
+    basicVerificationGame = await BasicVerificationGame.deployed()
+    simpleAdderVM = await SimpleAdderVM.deployed()
+    checkProofOrderedSolidity = merkleTree.checkProofOrderedSolidityFactory(basicVerificationGame.checkProofOrdered)
+    // Set flag to true to be ordered
+    mtree = new merkleTree.MerkleTree(hashes, true)
+    root = mtree.getRoot()
   })
 
-  it("should create a new verification game", async () => {
-    let tx = await basicVerificationGame.newGame(accounts[1], accounts[2], program, outputHash, programLength, responseTime, SimpleAdderVM.address)
-    const result = tx.logs[0].args
-    gameId = result.gameId
-    assert.equal(result.solver, accounts[1])
-    assert.equal(result.verifier, accounts[2])
+  it("should challenge and initialize", async () => {
+    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], {from: accounts[2]})
+
+    let log = tx.logs[0]
+
+    gameId = log.args.gameId
+
+    await basicVerificationGame.initGame(gameId, merkleTree.bufToHex(root), web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address, {from: accounts[2]})
   })
 
   it("should query a step", async () => {
@@ -80,6 +122,6 @@ contract('Timeout game with no response', function(accounts) {
     //query final step to make verification game short
     await basicVerificationGame.timeout(gameId, {from: accounts[2]})
 
-    assert.equal(2, await basicVerificationGame.status.call(gameId))
+    assert.equal(4, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })
