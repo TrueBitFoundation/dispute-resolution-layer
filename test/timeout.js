@@ -47,7 +47,7 @@ contract('Timeout Game with no query', function(accounts) {
   })
 
   it("should challenge and initialize", async () => {
-    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], {from: accounts[2]})
+    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], web3.utils.soliditySha3("spec goes here"), {from: accounts[2]})
 
     let log = tx.logs[0]
 
@@ -99,7 +99,7 @@ contract('Timeout game with no response', function(accounts) {
   })
 
   it("should challenge and initialize", async () => {
-    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], {from: accounts[2]})
+    let tx = await basicVerificationGame.commitChallenge(accounts[1], accounts[2], web3.utils.soliditySha3("spec goes here"), {from: accounts[2]})
 
     let log = tx.logs[0]
 

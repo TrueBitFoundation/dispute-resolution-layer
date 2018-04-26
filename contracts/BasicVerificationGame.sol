@@ -28,6 +28,7 @@ contract BasicVerificationGame {
         bytes32 highHash;
         bytes32 programMerkleRoot;
         bytes32 lastInstructionHash;
+        bytes32 spec;
     }
 
     mapping(bytes32 => VerificationGame) private games;
@@ -35,13 +36,14 @@ contract BasicVerificationGame {
     uint uniq;
 
     //This commits a verifier to a challenge, if they dont send a query before the response time they are eligible to be penalized.
-    function commitChallenge(address solver, address verifier) public returns (bytes32 gameId) {
-        gameId = keccak256(solver, verifier, uniq);
+    function commitChallenge(address solver, address verifier, bytes32 spec) public returns (bytes32 gameId) {
+        gameId = keccak256(solver, verifier, spec, uniq);
 
         VerificationGame storage game = games[gameId];
         game.solver = solver;
         game.verifier = verifier;
         game.state = State.Challenged;
+        game.spec = spec;
 
         uniq++;
         ChallengeCommitted(solver, verifier, gameId);
