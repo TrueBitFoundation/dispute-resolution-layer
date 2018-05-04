@@ -3,7 +3,7 @@ pragma solidity ^0.4.18;
 import "./IComputationLayer.sol";
 import "./IDisputeResolutionLayer.sol";
 
-contract BasicVerificationGame {
+contract BasicVerificationGame is IDisputeResolutionLayer {
 
     event ChallengeCommitted(address solver, address verifier, bytes32 gameId);
     event NewGame(bytes32 gameId, address solver, address verifier);
@@ -36,7 +36,7 @@ contract BasicVerificationGame {
     uint uniq;
 
     //This commits a verifier to a challenge, if they dont send a query before the response time they are eligible to be penalized.
-    function commitChallenge(address solver, address verifier, bytes32 spec) public returns (bytes32 gameId) {
+    function commitChallenge(address solver, address verifier, bytes32 spec) external returns (bytes32 gameId) {
         gameId = keccak256(solver, verifier, spec, uniq);
 
         VerificationGame storage game = games[gameId];
@@ -46,11 +46,18 @@ contract BasicVerificationGame {
         game.spec = spec;
 
         uniq++;
-        ChallengeCommitted(solver, verifier, gameId);
+        emit ChallengeCommitted(solver, verifier, gameId);
     }
 
     // This is Dispute Resolution Layer specific
-    function initGame(bytes32 gameId, bytes32 programMerkleRoot, bytes32 finalStateHash, uint numSteps, uint responseTime, IComputationLayer vm) public {
+    function initGame(
+        bytes32 gameId, 
+        bytes32 programMerkleRoot, 
+        bytes32 finalStateHash, 
+        uint numSteps, 
+        uint responseTime, 
+        IComputationLayer vm
+    ) public {
         VerificationGame storage game = games[gameId];
 
         require(game.state == State.Challenged);
@@ -73,7 +80,7 @@ contract BasicVerificationGame {
         //game.lowStep = 0;
     }
 
-    function status(bytes32 gameId) public view returns (uint8) {
+    function status(bytes32 gameId) external view returns (uint8) {
         return uint8(games[gameId].state);
     }
 
@@ -136,7 +143,7 @@ contract BasicVerificationGame {
         game.lastParticipantTime = block.number;
         game.lastParticipant = game.verifier;
 
-        NewQuery(gameId, stepNumber);
+        emit NewQuery(gameId, stepNumber);
     }
 
     function respond(bytes32 gameId, uint stepNumber, bytes32 hash) public {
@@ -158,7 +165,7 @@ contract BasicVerificationGame {
         game.lastParticipantTime = block.number;
         game.lastParticipant = game.solver;
 
-        NewResponse(gameId, hash);
+        emit NewResponse(gameId, hash);
     }
  
     function timeout(bytes32 gameId) public {
