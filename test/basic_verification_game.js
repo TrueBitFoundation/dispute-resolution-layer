@@ -87,14 +87,22 @@ contract('BasicVerificationGame query to high step', function(accounts) {
 
     let highStep = step
     let highStepIndex = step-1
-    let highStepState = await simpleAdderVM.runStep.call(lowStepState, highStep, program[highStepIndex])
+    let highStepState = await simpleAdderVM.runStep.call(lowStepState, program[highStepIndex])
 
     let proof = mtree.getProofOrdered(hashes[highStepIndex], highStep)
     const newProof = '0x' + proof.map(e => e.toString('hex')).join('')
 
     assert(await checkProofOrderedSolidity(proof, root, hashes[highStepIndex], highStep))
 
-    tx = await basicVerificationGame.performStepVerification(gameId, lowStepState, highStepState, newProof, {from: accounts[1]})
+    tx = await basicVerificationGame.performStepVerification(
+      gameId,
+      lowStepState,
+      highStepState,
+      program[highStepIndex],
+      newProof,
+      {from: accounts[1]}
+    )
+
     assert.equal(3, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })
