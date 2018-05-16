@@ -234,7 +234,7 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         //require that the next instruction be included in the program merkle root
         require(checkProofOrdered(proof, game.programMerkleRoot, keccak256(highStepState[0]), game.highStep));
 
-        bytes32[3] memory newState = game.vm.runStep(lowStepState, game.highStep, highStepState[0]);
+        bytes32[3] memory newState = game.vm.runStep(lowStepState, highStepState[0]);
 
         if (game.vm.merklizeState(newState) == game.highHash) {
             game.state = State.SolverWon;

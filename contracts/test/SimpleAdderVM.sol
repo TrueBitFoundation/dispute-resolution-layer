@@ -10,18 +10,10 @@ contract SimpleAdderVM is IComputationLayer {
     //Reg1: Stack1 Accum
     //Reg2: Stack2 Result
     //Reg3: StepCounter
-    function runStep(bytes32[3] currentState, uint stepNumber, bytes32 nextInput) public pure returns (bytes32[3] newState) {
-
-        require(currentState[2] == bytes32(stepNumber-1));
-
-        if (stepNumber == 0) {
-            require(currentState[0] == 0x0 && currentState[1] == 0x0 && currentState[2] == 0x0);
-            return currentState;
-        } else {
-            newState[0] = nextInput;
-            newState[1] = bytes32(uint(currentState[1]) + uint(nextInput));
-            newState[2] = bytes32(stepNumber);
-        }
+    function runStep(bytes32[3] currentState, bytes32 nextInput) public pure returns (bytes32[3] newState) {
+        newState[0] = nextInput;
+        newState[1] = bytes32(uint(currentState[1]) + uint(nextInput));
+        newState[2] = bytes32(uint(currentState[2]) + 1);
     }
 
     //Simple list merklization (works like sum)
@@ -38,14 +30,9 @@ contract SimpleAdderVM is IComputationLayer {
     //Used for generating results for query/response
     //Run offchain
     function runSteps(bytes32[] program, uint numSteps) public pure returns (bytes32[3] state, bytes32 stateHash) {
-        uint i = 0;
-
-        while (i < program.length && i <= numSteps) {
-            if (i > 0) {
-                bytes32 nextInstruction = program[i-1];
-                state = runStep(state, i, nextInstruction); 
-            }
-            i += 1;
+        for (uint i = 0; i < program.length && i < numSteps; i++) {
+            bytes32 nextInstruction = program[i];
+            state = runStep(state, nextInstruction);
         }
 
         stateHash = merklizeState(state);
