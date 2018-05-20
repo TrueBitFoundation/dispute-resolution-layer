@@ -87,7 +87,7 @@ contract('BasicVerificationGame query to high step', function(accounts) {
 
     let highStep = step
     let highStepIndex = step-1
-    let highStepState = await simpleAdderVM.runStep.call(lowStepState, highStep, program[highStepIndex])
+    let highStepState = await simpleAdderVM.runStep.call(lowStepState, program[highStepIndex])
 
     let proof = mtree.getProofOrdered(hashes[highStepIndex], highStep)
     const newProof = '0x' + proof.map(e => e.toString('hex')).join('')
