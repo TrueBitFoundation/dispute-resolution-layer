@@ -58,6 +58,9 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         uint responseTime, 
         IComputationLayer vm
     ) public {
+        // Can't play an empty game
+        require(numSteps > 0);
+
         VerificationGame storage game = games[gameId];
 
         require(game.state == State.Challenged);
