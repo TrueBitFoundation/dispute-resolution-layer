@@ -1,18 +1,25 @@
 pragma solidity ^0.4.18;
 
+import "./SimpleAdderInput.sol";
+import "./SimpleAdderState.sol";
 import "../IComputationLayer.sol";
 
 contract SimpleAdderVM is IComputationLayer {
 
     //Used directly only to run on chain computation, otherwise use runSteps
-    //VM State (4 Registers):
-    //Reg0: Stack0 Input
-    //Reg1: Stack2 Result
-    //Reg2: StepCounter
     function runStep(bytes32[3] currentState, bytes32 nextInput) external pure returns (bytes32[3] newState) {
-        newState[0] = nextInput;
-        newState[1] = bytes32(uint(currentState[1]) + uint(nextInput));
-        newState[2] = bytes32(uint(currentState[2]) + 1);
+        // Get registers
+        var (sum, stepNumber) = SimpleAdderState.getRegisters(currentState);
+
+        // Get input
+        uint nextNumber = SimpleAdderInput.getNumber(nextInput);
+
+        // Update state
+        sum += nextNumber;
+        stepNumber += 1;
+
+        // Get new state
+        newState = SimpleAdderState.getState(nextNumber, sum, stepNumber);
     }
 
     //Simple list merklization (works like sum)

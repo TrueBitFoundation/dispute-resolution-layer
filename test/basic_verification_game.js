@@ -94,7 +94,15 @@ contract('BasicVerificationGame query to high step', function(accounts) {
 
     assert(await checkProofOrderedSolidity(proof, root, hashes[highStepIndex], highStep))
 
-    tx = await basicVerificationGame.performStepVerification(gameId, lowStepState, highStepState, newProof, {from: accounts[1]})
+    tx = await basicVerificationGame.performStepVerification(
+        gameId,
+        lowStepState,
+        highStepState,
+        program[highStepIndex],
+        newProof,
+        {from: accounts[1]}
+    )
+
     assert.equal(3, (await basicVerificationGame.status.call(gameId)).toNumber())
   })
 })

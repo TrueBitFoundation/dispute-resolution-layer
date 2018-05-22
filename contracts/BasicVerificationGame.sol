@@ -77,7 +77,7 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         //game.medHash = bytes32(0);
         //game.medStep = 0;
 
-        bytes32[3] memory initialState = [bytes32(0), bytes32(0), bytes32(0)];
+        bytes32[3] memory initialState;
         game.lowHash = game.vm.merklizeState(initialState);
         //game.lowStep = 0;
     }
@@ -221,7 +221,13 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
 
 
     //Should probably replace preValue and postValue with preInstruction and postInstruction
-    function performStepVerification(bytes32 gameId, bytes32[3] lowStepState, bytes32[3] highStepState, bytes proof) public {
+    function performStepVerification(
+        bytes32 gameId,
+        bytes32[3] lowStepState,
+        bytes32[3] highStepState,
+        bytes32 nextInstruction,
+        bytes proof
+    ) public {
         VerificationGame storage game = games[gameId];
 
         require(game.state == State.Unresolved);
@@ -234,9 +240,9 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         require(game.vm.merklizeState(highStepState) == game.highHash);
 
         //require that the next instruction be included in the program merkle root
-        require(checkProofOrdered(proof, game.programMerkleRoot, keccak256(highStepState[0]), game.highStep));
+        require(checkProofOrdered(proof, game.programMerkleRoot, keccak256(nextInstruction), game.highStep));
 
-        bytes32[3] memory newState = game.vm.runStep(lowStepState, highStepState[0]);
+        bytes32[3] memory newState = game.vm.runStep(lowStepState, nextInstruction);
 
         if (game.vm.merklizeState(newState) == game.highHash) {
             game.state = State.SolverWon;
