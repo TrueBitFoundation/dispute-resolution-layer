@@ -33,7 +33,7 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
 
     mapping(bytes32 => VerificationGame) private games;
 
-    uint uniq;
+    uint private uniq;
 
     //This commits a verifier to a challenge, if they dont send a query before the response time they are eligible to be penalized.
     function commitChallenge(address solver, address verifier, bytes32 spec) external returns (bytes32 gameId) {
