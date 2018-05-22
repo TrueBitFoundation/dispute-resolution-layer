@@ -36,5 +36,4 @@ contract SimpleAdderVM is IComputationLayer {
 
         stateHash = this.merklizeState(state);
     }
-
 }

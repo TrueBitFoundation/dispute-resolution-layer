@@ -50,11 +50,11 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
 
     // This is Dispute Resolution Layer specific
     function initGame(
-        bytes32 gameId, 
-        bytes32 programMerkleRoot, 
-        bytes32 finalStateHash, 
-        uint numSteps, 
-        uint responseTime, 
+        bytes32 gameId,
+        bytes32 programMerkleRoot,
+        bytes32 finalStateHash,
+        uint numSteps,
+        uint responseTime,
         IComputationLayer vm
     ) public {
         // Can't play an empty game
