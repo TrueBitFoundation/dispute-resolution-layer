@@ -7,9 +7,8 @@ contract SimpleAdderVM is IComputationLayer {
     //Used directly only to run on chain computation, otherwise use runSteps
     //VM State (4 Registers):
     //Reg0: Stack0 Input
-    //Reg1: Stack1 Accum
-    //Reg2: Stack2 Result
-    //Reg3: StepCounter
+    //Reg1: Stack2 Result
+    //Reg2: StepCounter
     function runStep(bytes32[3] currentState, bytes32 nextInput) external pure returns (bytes32[3] newState) {
         newState[0] = nextInput;
         newState[1] = bytes32(uint(currentState[1]) + uint(nextInput));
