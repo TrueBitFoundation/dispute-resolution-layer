@@ -34,6 +34,12 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
 
     uint private uniq;
 
+    /**
+     * @notice Special flag to indicate a hash has been queried and is awaiting
+     * a response
+     */
+    bytes32 private constant HASH_AWAITING_RESPONSE = bytes32(0);
+
     //This commits a verifier to a challenge, if they dont send a query before the response time they are eligible to be penalized.
     function commitChallenge(address solver, address verifier, bytes32 spec) external returns (bytes32 gameId) {
         gameId = keccak256(solver, verifier, spec, uniq);
@@ -157,8 +163,8 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         // Require step to avoid replay problems
         require(stepNumber == game.medStep);
 
-        // provided hash cannot be zero; as that is a special flag.
-        require(hash != 0);
+        // Provided hash cannot be special flag
+        require(hash != HASH_AWAITING_RESPONSE);
 
         // record the claimed hash
         require(game.medHash == bytes32(0));
