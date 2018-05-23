@@ -1,22 +1,36 @@
 pragma solidity ^0.4.18;
 
+import "./SimpleAdderInput.sol";
+import "./SimpleAdderState.sol";
 import "../IComputationLayer.sol";
 
+/**
+ * @title Example VM
+ */
 contract SimpleAdderVM is IComputationLayer {
-
-    //Used directly only to run on chain computation, otherwise use runSteps
-    //VM State (4 Registers):
-    //Reg0: Stack0 Input
-    //Reg1: Stack2 Result
-    //Reg2: StepCounter
+    /**
+     * @notice Implementation of IComputationLayer.runStep()
+     */
     function runStep(bytes32[3] currentState, bytes32 nextInput) external pure returns (bytes32[3] newState) {
-        newState[0] = nextInput;
-        newState[1] = bytes32(uint(currentState[1]) + uint(nextInput));
-        newState[2] = bytes32(uint(currentState[2]) + 1);
+        // Get registers
+        var (sum, stepNumber) = SimpleAdderState.getRegisters(currentState);
+
+        // Get input
+        uint nextNumber = SimpleAdderInput.getNumber(nextInput);
+
+        // Update state
+        sum += nextNumber;
+        stepNumber += 1;
+
+        // Get new state
+        newState = SimpleAdderState.getState(nextNumber, sum, stepNumber);
     }
 
-    //Simple list merklization (works like sum)
+    /**
+     * @notice Implementation of IRepeatedGameComputationLayer.merklizeState()
+     */
     function merklizeState(bytes32[3] state) external pure returns (bytes32 merkleRoot) {
+        // Simple list merklization (works like sum)
         for (uint i = 0; i < state.length; i++) {
             if (i == 0) {
                 merkleRoot = state[0];
@@ -26,8 +40,17 @@ contract SimpleAdderVM is IComputationLayer {
         }
     }
 
-    //Used for generating results for query/response
-    //Run offchain
+    /**
+     * @notice Used for generating results for query/response
+     *
+     * @dev Run offchain
+     *
+     * @param program The input
+     * @param numSteps The number of steps to run
+     *
+     * @return state The final state
+     * @return stateHash The hash of the final state
+     */
     function runSteps(bytes32[] program, uint numSteps) external view returns (bytes32[3] state, bytes32 stateHash) {
         for (uint i = 0; i < program.length && i < numSteps; i++) {
             bytes32 nextInstruction = program[i];
@@ -36,5 +59,4 @@ contract SimpleAdderVM is IComputationLayer {
 
         stateHash = this.merklizeState(state);
     }
-
 }
