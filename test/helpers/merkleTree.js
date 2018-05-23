@@ -1,3 +1,6 @@
+// Copyright (C) 2018 TrueBit
+// See Copyright Notice in LICENSE-MIT.txt
+
 //https://github.com/ameensol/merkle-tree-solidity/blob/master/js/merkle.js
 
 // https://github.com/raiden-network/raiden/blob/master/raiden/mtree.py
