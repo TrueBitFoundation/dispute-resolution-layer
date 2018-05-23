@@ -27,13 +27,12 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         uint highStep;
         bytes32 highHash;
         bytes32 programMerkleRoot;
-        bytes32 lastInstructionHash;
         bytes32 spec;
     }
 
     mapping(bytes32 => VerificationGame) private games;
 
-    uint uniq;
+    uint private uniq;
 
     //This commits a verifier to a challenge, if they dont send a query before the response time they are eligible to be penalized.
     function commitChallenge(address solver, address verifier, bytes32 spec) external returns (bytes32 gameId) {
@@ -58,6 +57,9 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         uint responseTime, 
         IComputationLayer vm
     ) public {
+        // Can't play an empty game
+        require(numSteps > 0);
+
         VerificationGame storage game = games[gameId];
 
         require(game.state == State.Challenged);

@@ -1,13 +1,6 @@
 const SimpleAdderVM = artifacts.require("./test/SimpleAdderVM.sol")
 const web3 = require('web3')
 
-const toResult = (data) => {
-  return {
-    state: "0x" + data[0].slice(-2),//because of encoding issues, uhhhh....
-    stateHash: data[1]
-  }
-}
-
 contract('SimpleAdderVM', function(accounts) {
   let simpleAdderVM
 
