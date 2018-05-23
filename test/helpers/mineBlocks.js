@@ -1,3 +1,6 @@
+// Copyright (C) 2018 TrueBit
+// See Copyright Notice in LICENSE-MIT.txt
+
 module.exports = async (web3, n) => {
   for(let i = 0; i < n; i++) {
     await new Promise((resolve, reject) => {

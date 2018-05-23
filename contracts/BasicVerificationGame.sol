@@ -1,3 +1,6 @@
+// Copyright (C) 2018 TrueBit
+// See Copyright Notice in LICENSE-MIT.txt
+
 pragma solidity ^0.4.18;
 
 import "./IComputationLayer.sol";
