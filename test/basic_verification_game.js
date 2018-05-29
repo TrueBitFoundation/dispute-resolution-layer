@@ -55,6 +55,7 @@ contract('BasicVerificationGame query to high step', function(accounts) {
     gameId = log.args.gameId
 
     await basicVerificationGame.initGame(gameId, merkleTree.bufToHex(root), web3.utils.soliditySha3(output), programLength, responseTime, SimpleAdderVM.address, {from: accounts[2]})
+
   })
 
   it("should query a step", async () => {

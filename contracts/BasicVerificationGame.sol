@@ -18,7 +18,7 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
     /**
      * @notice A new game has been started
      */
-    event NewGame(bytes32 gameId, address solver, address verifier);
+    event NewGame(bytes32 gameId, address solver, address verifier, uint responseTime);
 
     /**
      * @notice A new query has been sent
@@ -138,6 +138,7 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
         //game.medHash = bytes32(0);
         game.highStep = numSteps;
         game.highHash = finalStateHash;
+	emit NewGame(gameId, game.solver, game.verifier, game.responseTime);
     }
 
     /**
@@ -157,13 +158,14 @@ contract BasicVerificationGame is IDisputeResolutionLayer {
      * @return high The high step of the binary search
      * @return medHash The hash of the middle step
      */
-    function gameData(bytes32 gameId) public view returns (uint low, uint med, uint high, bytes32 medHash) {
+    function gameData(bytes32 gameId) public view returns (uint low, uint med, uint high, bytes32 medHash, address lastParticipant) {
         VerificationGame storage game = games[gameId];
 
         low = game.lowStep;
         med = game.medStep;
         high = game.highStep;
         medHash = game.medHash;
+	lastParticipant = game.lastParticipant;
     }
 
     /**
