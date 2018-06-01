@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "truffle test"
+    "test": "truffle test",
+    "migrate": "truffle migrate --reset"
   },
   "keywords": [
     "truebit"
@@ -17,5 +18,9 @@
   "dependencies": {
     "ethereumjs-util": "^5.1.5",
     "web3": "^1.0.0-beta.30"
+  },
+  "devDependencies": {
+    "ganache-cli": "^6.1.0",
+    "truffle": "^4.1.11"
   }
 }
